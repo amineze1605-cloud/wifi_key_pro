@@ -1,0 +1,15 @@
+{
+  "name": "WiFi Key Pro",
+  "short_name": "WiFi Key Pro",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#2563EB",
+  "theme_color": "#2563EB",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
