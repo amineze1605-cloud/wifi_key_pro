@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WiFi Key Pro</title>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2563EB">
+
+<style>
+:root {
+  --bg: #f5f7fa;
+  --card: #ffffff;
+  --text: #111;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --text: #f1f5f9;
+  }
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont;
+  background: var(--bg);
+  color: var(--text);
+  padding: 20px;
+}
+
+.card {
+  background: var(--card);
+  padding: 20px;
+  border-radius: 20px;
+  margin-bottom: 20px;
+}
+
+button {
+  width: 100%;
+  padding: 14px;
+  border-radius: 14px;
+  border: none;
+  font-size: 16px;
+  background: #2563EB;
+  color: white;
+  margin-top: 10px;
+}
+
+input, select {
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  margin-top: 8px;
+}
+
+.progress {
+  height: 6px;
+  border-radius: 4px;
+  margin-top: 8px;
+  background: #ddd;
+}
+
+.progress-bar {
+  height: 6px;
+  border-radius: 4px;
+  width: 0%;
+}
+</style>
+</head>
+<body>
+
+<h2>WiFi Key Pro</h2>
+
+<div class="card">
+  <div id="password" style="font-size:20px;font-weight:bold;"></div>
+  <div class="progress">
+    <div id="strengthBar" class="progress-bar"></div>
+  </div>
+  <div id="strengthText"></div>
+</div>
+
+<div class="card">
+  <label>Longueur</label>
+  <input type="range" min="8" max="32" value="12" id="length">
+
+  <label><input type="checkbox" id="lowercase"> Inclure minuscules</label>
+  <label><input type="checkbox" id="symbols"> Inclure symboles</label>
+
+  <label>Format box</label>
+  <select id="format">
+    <option value="classic">Classique (XXXX-XXXX)</option>
+    <option value="livebox">Livebox_XXXX</option>
+    <option value="sfr">SFR XXXX-XXXX</option>
+    <option value="freebox">Freebox XX:XX</option>
+    <option value="numeric">100% Numérique</option>
+  </select>
+
+  <label>Préfixe personnalisé</label>
+  <input type="text" id="prefix" placeholder="Ex: Maison_">
+
+  <button onclick="generate()">Générer</button>
+</div>
+
+<div class="card">
+  <canvas id="qr"></canvas>
+</div>
+
+<div class="card">
+  <h4>Historique</h4>
+  <div id="history"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+
+<script>
+function secureRandom(chars, length) {
+  const array = new Uint32Array(length);
+  crypto.getRandomValues(array);
+  return Array.from(array, x => chars[x % chars.length]).join('');
+}
+
+function applyFormat(raw) {
+  const format = document.getElementById("format").value;
+
+  if (format === "livebox") return "Livebox_" + raw;
+  if (format === "sfr") return raw.match(/.{1,4}/g).join("-");
+  if (format === "freebox") return raw.match(/.{1,2}/g).join(":");
+  if (format === "numeric") return raw;
+
+  return raw.match(/.{1,4}/g).join("-");
+}
+
+function strengthScore(pwd) {
+  let score = 0;
+  if (pwd.length >= 12) score++;
+  if (/[a-z]/.test(pwd)) score++;
+  if (/[^A-Za-z0-9]/.test(pwd)) score++;
+  if (pwd.length >= 16) score++;
+  return score;
+}
+
+function updateStrength(pwd) {
+  const score = strengthScore(pwd);
+  const bar = document.getElementById("strengthBar");
+  const text = document.getElementById("strengthText");
+
+  const percent = (score / 4) * 100;
+  bar.style.width = percent + "%";
+
+  const colors = ["red","orange","yellow","lightgreen","green"];
+  bar.style.background = colors[score];
+
+  const labels = ["Faible","Moyen","Correct","Fort","Très fort"];
+  text.innerText = labels[score];
+}
+
+function saveHistory(pwd) {
+  let history = JSON.parse(localStorage.getItem("history") || "[]");
+  history.unshift(pwd);
+  if (history.length > 10) history.pop();
+  localStorage.setItem("history", JSON.stringify(history));
+  renderHistory();
+}
+
+function renderHistory() {
+  const history = JSON.parse(localStorage.getItem("history") || "[]");
+  document.getElementById("history").innerHTML =
+    history.map(p => "<div>"+p+"</div>").join("");
+}
+
+function generate() {
+  const length = document.getElementById("length").value;
+  const lower = document.getElementById("lowercase").checked;
+  const symbols = document.getElementById("symbols").checked;
+  const prefix = document.getElementById("prefix").value;
+
+  let chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  if (lower) chars += "abcdefghijklmnopqrstuvwxyz";
+  if (symbols) chars += "!@#$%&*";
+
+  let raw = secureRandom(chars, length);
+  let pwd = prefix + applyFormat(raw);
+
+  document.getElementById("password").innerText = pwd;
+
+  updateStrength(pwd);
+  saveHistory(pwd);
+
+  QRCode.toCanvas(document.getElementById("qr"),
+    "WIFI:T:WPA;S:MonWiFi;P:"+pwd+";;");
+}
+
+generate();
+renderHistory();
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js');
+}
+</script>
+
+</body>
+</html>
