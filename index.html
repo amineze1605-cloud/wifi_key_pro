@@ -87,6 +87,7 @@ max-height:60vh;
 overflow:auto;
 }
 .modal.active{bottom:0;}
+.modal h3{text-align:center;}
 </style>
 </head>
 
@@ -182,9 +183,34 @@ const finalPass=(customPrefix||prefix)+pass;
 
 document.getElementById("password").textContent=finalPass;
 analyzeStrength(finalPass);
+saveHistory(finalPass);
 generateQR(finalPass);
 generatedCount++;
 document.getElementById("counter").textContent="Générés : "+generatedCount;
+}
+
+function saveHistory(p){
+let hist=JSON.parse(localStorage.getItem("wifi_history"))||[];
+hist.unshift(p);
+if(hist.length>50) hist=hist.slice(0,50); // garde 50 derniers
+localStorage.setItem("wifi_history",JSON.stringify(hist));
+renderHistory();
+}
+
+function renderHistory(){
+const list=document.getElementById("historyList");
+list.innerHTML="";
+const hist=JSON.parse(localStorage.getItem("wifi_history"))||[];
+hist.forEach(item=>{
+const li=document.createElement("li");
+li.textContent=item;
+list.appendChild(li);
+});
+}
+
+function toggleHistory(){
+document.getElementById("historyModal").classList.toggle("active");
+renderHistory();
 }
 
 function toggleAuto(){
@@ -217,14 +243,11 @@ document.getElementById("strength").textContent="Force : "+(levels[score-1]||"Fa
 
 function copyPassword(){
 navigator.clipboard.writeText(document.getElementById("password").textContent);
+alert("Copié !");
 }
 
 function toggleDark(){
 document.body.classList.toggle("dark");
-}
-
-function toggleHistory(){
-document.getElementById("historyModal").classList.toggle("active");
 }
 
 function generateQR(password){
