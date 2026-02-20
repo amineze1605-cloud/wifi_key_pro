@@ -1,117 +1,219 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WiFi Key Pro</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WiFi Key Pro</title>
 
-  <!-- PWA -->
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#2563EB">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2563EB">
 
-  <!-- iOS Support -->
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="WiFi Key Pro">
-  <link rel="apple-touch-icon" href="icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="WiFi Key Pro">
+<link rel="apple-touch-icon" href="icon.png">
 
-  <style>
-    body {
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      background: linear-gradient(135deg, #2563EB, #1E3A8A);
-      color: white;
-      text-align: center;
-      padding: 30px;
-    }
+<style>
+:root {
+  --bg: linear-gradient(135deg,#2563EB,#1E3A8A);
+  --card: rgba(255,255,255,0.1);
+  --text: white;
+}
 
-    h1 {
-      font-size: 28px;
-      margin-top: 40px;
-    }
+.dark {
+  --bg: #111;
+  --card: #1e1e1e;
+  --text: #eee;
+}
 
-    .card {
-      background: rgba(255,255,255,0.1);
-      backdrop-filter: blur(15px);
-      border-radius: 20px;
-      padding: 30px;
-      margin-top: 40px;
-    }
+body {
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  text-align:center;
+  padding:20px;
+}
 
-    .password {
-      font-size: 22px;
-      font-weight: bold;
-      margin: 20px 0;
-      word-break: break-all;
-    }
+.card{
+  background:var(--card);
+  backdrop-filter:blur(15px);
+  border-radius:20px;
+  padding:20px;
+  margin-top:20px;
+}
 
-    button {
-      background: white;
-      color: #1E3A8A;
-      border: none;
-      padding: 15px 25px;
-      border-radius: 15px;
-      font-size: 16px;
-      font-weight: bold;
-      cursor: pointer;
-      margin: 10px;
-    }
+input, select{
+  padding:8px;
+  border-radius:10px;
+  border:none;
+  margin:5px;
+}
 
-    button:active {
-      transform: scale(0.97);
-    }
+button{
+  padding:12px 18px;
+  border:none;
+  border-radius:12px;
+  margin:5px;
+  font-weight:bold;
+  cursor:pointer;
+}
 
-    .footer {
-      margin-top: 60px;
-      font-size: 12px;
-      opacity: 0.7;
-    }
-  </style>
+.password{
+  font-size:18px;
+  word-break:break-all;
+  margin:15px 0;
+}
+
+.strength{
+  margin-top:5px;
+  font-size:14px;
+}
+</style>
 </head>
+
 <body>
 
-  <h1>WiFi Key Pro 🔐</h1>
+<h1>WiFi Key Pro 🔐</h1>
 
-  <div class="card">
-    <div id="password" class="password">
-      Appuie pour générer
-    </div>
+<div class="card">
 
-    <button onclick="generatePassword()">Générer</button>
-    <button onclick="copyPassword()">Copier</button>
-  </div>
+<label>Format box :</label><br>
+<select id="boxFormat">
+<option value="standard">Standard sécurisé</option>
+<option value="livebox">Livebox_</option>
+<option value="bbox">Bbox-</option>
+<option value="sfr">SFR_</option>
+<option value="freebox">Freebox_</option>
+<option value="proximus">PROXIMUS-</option>
+<option value="tadaam">TADAAM-</option>
+<option value="base">BASE-</option>
+</select>
 
-  <div class="footer">
-    Générateur sécurisé local • Aucun stockage
-  </div>
+<br>
+
+<label>Longueur :</label>
+<input type="number" id="length" value="20" min="8" max="32">
+
+<br>
+
+<label><input type="checkbox" id="lowercase" checked> Minuscules</label>
+<label><input type="checkbox" id="symbols"> Symboles</label>
+
+<br>
+
+<label>Préfixe custom :</label>
+<input type="text" id="customPrefix" placeholder="Ex: Maison_">
+
+<div class="password" id="password">Appuie sur Générer</div>
+<div class="strength" id="strength"></div>
+
+<button onclick="generatePassword()">Générer</button>
+<button onclick="copyPassword()">Copier</button>
+<button onclick="toggleDark()">Mode sombre</button>
+
+<div id="qrcode" style="margin-top:15px;"></div>
+
+<h3>Historique</h3>
+<ul id="history"></ul>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <script>
-  function generatePassword() {
-    const length = 20;
-    const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    const array = new Uint32Array(length);
-    crypto.getRandomValues(array);
+function generatePassword(){
+  const length = parseInt(document.getElementById("length").value);
+  const lowercase = document.getElementById("lowercase").checked;
+  const symbols = document.getElementById("symbols").checked;
+  const format = document.getElementById("boxFormat").value;
+  const customPrefix = document.getElementById("customPrefix").value;
 
-    let password = "";
-    for (let i = 0; i < length; i++) {
-      password += charset[array[i] % charset.length];
-    }
+  let charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  if(lowercase) charset += "abcdefghijklmnopqrstuvwxyz";
+  if(symbols) charset += "!@#$%&*";
 
-    document.getElementById("password").textContent = password;
+  const array = new Uint32Array(length);
+  crypto.getRandomValues(array);
+
+  let pass="";
+  for(let i=0;i<length;i++){
+    pass+=charset[array[i]%charset.length];
   }
 
-  function copyPassword() {
-    const text = document.getElementById("password").textContent;
-    navigator.clipboard.writeText(text);
-    alert("Mot de passe copié !");
+  let prefix="";
+  switch(format){
+    case "livebox": prefix="Livebox_"; break;
+    case "bbox": prefix="Bbox-"; break;
+    case "sfr": prefix="SFR_"; break;
+    case "freebox": prefix="Freebox_"; break;
+    case "proximus": prefix="PROXIMUS-"; break;
+    case "tadaam": prefix="TADAAM-"; break;
+    case "base": prefix="BASE-"; break;
   }
 
-  // Service Worker
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js');
-    });
-  }
+  const finalPass = (customPrefix || prefix) + pass;
+
+  document.getElementById("password").textContent = finalPass;
+
+  analyzeStrength(finalPass);
+  saveHistory(finalPass);
+  generateQR(finalPass);
+}
+
+function analyzeStrength(p){
+  let score=0;
+  if(p.length>=12) score++;
+  if(/[A-Z]/.test(p)&&/[a-z]/.test(p)) score++;
+  if(/[0-9]/.test(p)) score++;
+  if(/[^A-Za-z0-9]/.test(p)) score++;
+
+  const levels=["Faible","Moyen","Bon","Fort"];
+  document.getElementById("strength").textContent="Force : "+levels[score-1]||"Faible";
+}
+
+function copyPassword(){
+  const text=document.getElementById("password").textContent;
+  navigator.clipboard.writeText(text);
+  alert("Copié !");
+}
+
+function toggleDark(){
+  document.body.classList.toggle("dark");
+}
+
+function saveHistory(p){
+  let hist=JSON.parse(localStorage.getItem("wifi_history"))||[];
+  hist.unshift(p);
+  hist=hist.slice(0,5);
+  localStorage.setItem("wifi_history",JSON.stringify(hist));
+  renderHistory();
+}
+
+function renderHistory(){
+  const list=document.getElementById("history");
+  list.innerHTML="";
+  const hist=JSON.parse(localStorage.getItem("wifi_history"))||[];
+  hist.forEach(item=>{
+    const li=document.createElement("li");
+    li.textContent=item;
+    list.appendChild(li);
+  });
+}
+
+function generateQR(password){
+  document.getElementById("qrcode").innerHTML="";
+  new QRCode(document.getElementById("qrcode"),{
+    text:"WIFI:T:WPA;S:WiFi;P:"+password+";;",
+    width:150,
+    height:150
+  });
+}
+
+renderHistory();
+
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js');
+}
 </script>
 
 </body>
